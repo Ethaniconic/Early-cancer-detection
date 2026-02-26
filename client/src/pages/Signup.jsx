@@ -4,33 +4,47 @@ import {
   User, ShieldCheck, Stethoscope, Lock, Phone,
   Calendar, ArrowRight, IdCard, Building, BriefcaseMedical
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import './Signup.css';
 
-const Signup = () => {
-  const [role, setRole] = useState('user'); // 'user', 'doctor', or 'admin'
+const API_URL = 'http://localhost:3000/api';
 
-  // Consolidated state for all possible fields
+const Signup = () => {
+  const navigate = useNavigate();
+  const [role, setRole] = useState('user');
   const [formData, setFormData] = useState({
-    name: '',
-    mobile: '',
-    password: '',
-    age: '',              // Patient specific
-    licenseNumber: '',    // Doctor specific
-    specialization: '',   // Doctor specific
-    hospital: '',         // Doctor specific
-    adminId: '',          // Admin specific
-    department: ''        // Admin specific
+    name: '', mobile: '', password: '', age: '',
+    licenseNumber: '', specialization: '', hospital: '',
+    adminId: '', department: ''
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log(`Registering ${role}:`, formData);
-    // Add API submission logic here
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_URL}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...formData, age: Number(formData.age), role }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.message || 'Registration failed. Please try again.');
+      } else {
+        navigate('/login', { replace: true, state: { registered: true, name: data.user.name } });
+      }
+    } catch {
+      setError('Could not connect to server. Please check your connection.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -72,6 +86,12 @@ const Signup = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="signup-form">
+          {/* Error Alert */}
+          {error && (
+            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '10px 14px', color: '#ef4444', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>⚠</span> {error}
+            </div>
+          )}
           <AnimatePresence mode="wait">
             <motion.div
               key={role} // Re-animates smoothly when role changes
@@ -250,9 +270,10 @@ const Signup = () => {
           </AnimatePresence>
 
           <div className="signup-footer">
-            <button type="submit" className="btn-submit">
-              Register as {role.charAt(0).toUpperCase() + role.slice(1)}
-              <ArrowRight size={18} />
+            <button type="submit" className="btn-submit" disabled={loading}>
+              {loading
+                ? <span style={{ display: 'inline-block', width: 18, height: 18, border: '2.5px solid rgba(255,255,255,0.35)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+                : <>{`Register as ${role.charAt(0).toUpperCase() + role.slice(1)}`} <ArrowRight size={18} /></>}
             </button>
           </div>
 

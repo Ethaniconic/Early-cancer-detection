@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Stethoscope, ShieldCheck, Phone, IdCard, Lock, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import './Login.css';
 
 const API_URL = 'http://localhost:3000/api';
@@ -35,6 +35,7 @@ const ROLE_CONFIG = {
 };
 
 const Login = () => {
+    const navigate = useNavigate();
     const [role, setRole] = useState('user');
     const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
@@ -79,7 +80,9 @@ const Login = () => {
             } else {
                 localStorage.setItem('token', data.token);
                 localStorage.setItem('user', JSON.stringify(data.user));
-                setSuccess(`Welcome back, ${data.user.name}!`);
+                // Redirect to role-specific dashboard
+                const dashMap = { user: '/dashboard/patient', doctor: '/dashboard/doctor', admin: '/dashboard/admin' };
+                navigate(dashMap[data.user.role] || '/login', { replace: true });
             }
         } catch (err) {
             setError('Could not connect to server. Please check your connection.');
