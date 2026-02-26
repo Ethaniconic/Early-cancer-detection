@@ -50,4 +50,46 @@ const registerUser = async (req, res) => {
     }
 }
 
-module.exports = { registerUser };
+const loginUser = async (req, res) => {
+    try {
+        // Using mobile for login since it's unique in the schema
+        const { mobile, password } = req.body;
+
+        if (!mobile || !password) {
+            return res.status(400).json({
+                message: "Please fill all the details"
+            });
+        }
+
+        // Find user by mobile number
+        const user = await User.findOne({ mobile });
+
+        // Check if user exists and password matches
+        if (user && (await bcrypt.compare(password, user.password))) {
+            // Generate JWT Token
+            const token = jwt.sign(
+                { id: user._id, role: user.role },
+                process.env.JWT_SECRET || 'fallback_secret',
+                { expiresIn: '30d' }
+            );
+
+            res.json({
+                message: "Login successful",
+                user: {
+                    _id: user._id,
+                    name: user.name,
+                    mobile: user.mobile,
+                    role: user.role
+                },
+                token
+            });
+        } else {
+            res.status(401).json({ message: "Invalid mobile number or password" });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server Error" });
+    }
+}
+
+module.exports = { registerUser, loginUser };
