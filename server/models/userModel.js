@@ -24,17 +24,41 @@ const userSchema = new mongoose.Schema({
         enum: ['user', 'admin', 'doctor'],
         default: 'user'
     },
+    // Patient Profile Completion Fields
+    profileComplete: {
+        type: Boolean,
+        default: false
+    },
+    targetCancer: { type: String, trim: true },
+    bloodGroup: { type: String, trim: true },
+    currentMedications: { type: String, trim: true },
+    pastSurgeries: { type: String, trim: true },
+    knownAllergies: { type: String, trim: true },
+    familyHistory: { type: String, trim: true },
+    currentSymptoms: { type: String, trim: true },
     // Doctor-specific identifier
     licenseNumber: {
         type: String,
         trim: true,
         sparse: true
     },
+    specialization: {
+        type: String,
+        trim: true
+    },
+    hospital: {
+        type: String,
+        trim: true
+    },
     // Admin-specific identifier
     adminId: {
         type: String,
         trim: true,
         sparse: true
+    },
+    department: {
+        type: String,
+        trim: true
     }
 }, {
     timestamps: true
