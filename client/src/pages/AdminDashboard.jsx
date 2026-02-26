@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { LogOut, Users, Stethoscope, ShieldCheck, BarChart2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import '../pages/Dashboard.css';
+import './Dashboard.css';
 
 // Demo stats — replace with real API once admin endpoints are ready
 const DEMO_USERS = [

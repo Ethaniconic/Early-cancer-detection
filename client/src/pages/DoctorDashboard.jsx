@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { LogOut, Users, FlaskConical, Activity, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import '../pages/Dashboard.css';
+import './Dashboard.css';
 
 const API_URL = 'http://localhost:3000/api';
 
