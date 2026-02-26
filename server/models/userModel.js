@@ -12,8 +12,7 @@ const userSchema = new mongoose.Schema({
         sparse: true,
     },
     age: {
-        type: Number,
-        required: true
+        type: Number
     },
     password: {
         type: String,
@@ -22,10 +21,20 @@ const userSchema = new mongoose.Schema({
     role: {
         type: String,
         required: true,
-        // The enum restricts the allowed values to what you specify here.
-        // Update these values to perfectly match the frontend dropdown options.
         enum: ['user', 'admin', 'doctor'],
         default: 'user'
+    },
+    // Doctor-specific identifier
+    licenseNumber: {
+        type: String,
+        trim: true,
+        sparse: true
+    },
+    // Admin-specific identifier
+    adminId: {
+        type: String,
+        trim: true,
+        sparse: true
     }
 }, {
     timestamps: true

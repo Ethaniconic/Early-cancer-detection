@@ -1,72 +1,95 @@
-const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
 
 const registerUser = async (req, res) => {
     try {
-        const { name, mobile, age, password, role } = req.body;
+        const { name, mobile, age, password, role, licenseNumber, specialization, hospital, adminId, department } = req.body;
 
-        // Validation for new schema fields
-        if (!name || !mobile || !age || !password || !role) {
-            return res.status(400).json({ message: "Please fill all the fields" });
+        if (!name || !password || !role) {
+            return res.status(400).json({ message: 'Please fill all required fields.' });
         }
 
-        // Check user existence using mobile number
-        const userExists = await User.findOne({ mobile });
+        // Role-specific validation and duplicate check
+        let query = {};
+        let userData = { name, password, role };
+
+        if (role === 'user') {
+            if (!mobile || !age) {
+                return res.status(400).json({ message: 'Mobile number and age are required for patients.' });
+            }
+            query = { mobile };
+            userData = { ...userData, mobile, age };
+        } else if (role === 'doctor') {
+            if (!licenseNumber || !mobile) {
+                return res.status(400).json({ message: 'License number and mobile are required for doctors.' });
+            }
+            query = { licenseNumber };
+            userData = { ...userData, licenseNumber, mobile, specialization, hospital };
+        } else if (role === 'admin') {
+            if (!adminId || !mobile) {
+                return res.status(400).json({ message: 'Admin ID and mobile are required for admins.' });
+            }
+            query = { adminId };
+            userData = { ...userData, adminId, mobile, department };
+        } else {
+            return res.status(400).json({ message: 'Invalid role.' });
+        }
+
+        // Check for duplicates
+        const userExists = await User.findOne(query);
         if (userExists) {
-            return res.status(400).json({ message: "User already exists with this mobile number" });
+            return res.status(400).json({ message: 'A user with this identifier already exists.' });
         }
 
         // Hash the password
         const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
+        userData.password = await bcrypt.hash(password, salt);
 
-        // Create the user in the database
-        const user = await User.create({
-            name,
-            mobile,
-            age,
-            password: hashedPassword,
-            role
-        });
+        const user = await User.create(userData);
 
         if (user) {
             res.status(201).json({
-                message: "User registered successfully",
-                user: {
-                    _id: user._id,
-                    name: user.name,
-                    mobile: user.mobile,
-                    role: user.role
-                }
+                message: 'User registered successfully',
+                user: { _id: user._id, name: user.name, role: user.role }
             });
         } else {
-            res.status(400).json({ message: "Invalid user data" });
+            res.status(400).json({ message: 'Invalid user data.' });
         }
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: "Server Error" });
+        res.status(500).json({ message: 'Server Error' });
     }
-}
+};
 
 const loginUser = async (req, res) => {
     try {
-        // Using mobile for login since it's unique in the schema
-        const { mobile, password } = req.body;
+        const { role, password, mobile, licenseNumber, adminId } = req.body;
 
-        if (!mobile || !password) {
-            return res.status(400).json({
-                message: "Please fill all the details"
-            });
+        if (!role || !password) {
+            return res.status(400).json({ message: 'Role and password are required.' });
         }
 
-        // Find user by mobile number
-        const user = await User.findOne({ mobile });
+        let user = null;
+        let invalidMsg = '';
 
-        // Check if user exists and password matches
+        if (role === 'user') {
+            if (!mobile) return res.status(400).json({ message: 'Mobile number is required for patient login.' });
+            user = await User.findOne({ mobile, role: 'user' });
+            invalidMsg = 'Invalid mobile number or password.';
+        } else if (role === 'doctor') {
+            if (!licenseNumber) return res.status(400).json({ message: 'License number is required for doctor login.' });
+            user = await User.findOne({ licenseNumber, role: 'doctor' });
+            invalidMsg = 'Invalid license number or password.';
+        } else if (role === 'admin') {
+            if (!adminId) return res.status(400).json({ message: 'Admin ID is required for admin login.' });
+            user = await User.findOne({ adminId, role: 'admin' });
+            invalidMsg = 'Invalid admin ID or password.';
+        } else {
+            return res.status(400).json({ message: 'Invalid role.' });
+        }
+
         if (user && (await bcrypt.compare(password, user.password))) {
-            // Generate JWT Token
             const token = jwt.sign(
                 { id: user._id, role: user.role },
                 process.env.JWT_SECRET || 'fallback_secret',
@@ -74,22 +97,17 @@ const loginUser = async (req, res) => {
             );
 
             res.json({
-                message: "Login successful",
-                user: {
-                    _id: user._id,
-                    name: user.name,
-                    mobile: user.mobile,
-                    role: user.role
-                },
+                message: 'Login successful',
+                user: { _id: user._id, name: user.name, role: user.role },
                 token
             });
         } else {
-            res.status(401).json({ message: "Invalid mobile number or password" });
+            res.status(401).json({ message: invalidMsg });
         }
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: "Server Error" });
+        res.status(500).json({ message: 'Server Error' });
     }
-}
+};
 
 module.exports = { registerUser, loginUser };

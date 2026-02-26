@@ -1,0 +1,215 @@
+:root {
+  --primary-teal: #0d9488;
+  --primary-teal-hover: #0f766e;
+  --bg-teal: #f0fdfa;
+  --text-dark: #115e59;
+  --text-muted: #64748b;
+  --border-color: #e2e8f0;
+  --input-bg: #f8fafc;
+  --white: #ffffff;
+}
+
+.signup-container {
+  min-height: 100vh;
+  background-color: var(--bg-teal);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  padding: 20px;
+}
+
+.signup-card {
+  background: var(--white);
+  width: 100%;
+  max-width: 480px;
+  /* Widened slightly to accommodate side-by-side doctor fields */
+  border-radius: 24px;
+  padding: 40px;
+  box-shadow: 0 10px 40px rgba(13, 148, 136, 0.08);
+}
+
+.signup-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.signup-title {
+  color: var(--text-dark);
+  font-size: 26px;
+  margin: 0 0 8px 0;
+  font-weight: 700;
+}
+
+.signup-subtitle {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Role Selector Buttons */
+.role-selector {
+  display: flex;
+  background: var(--input-bg);
+  padding: 6px;
+  border-radius: 12px;
+  margin-top: 24px;
+  border: 1px solid var(--border-color);
+}
+
+.role-btn {
+  flex: 1;
+  padding: 10px 4px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  transition: all 0.3s ease;
+}
+
+.role-btn:hover {
+  color: var(--text-dark);
+}
+
+.role-btn.active {
+  background: var(--white);
+  color: var(--primary-teal);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* Form Styles */
+.signup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.input-row {
+  display: flex;
+  gap: 16px;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.flex-2 {
+  flex: 2;
+}
+
+.input-with-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.field-icon {
+  position: absolute;
+  left: 16px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.form-input {
+  width: 100%;
+  padding: 14px 16px 14px 44px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border-color);
+  background-color: var(--input-bg);
+  font-size: 14px;
+  color: #334155;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+/* Specific styling for dropdowns to match inputs */
+.form-select {
+  appearance: none;
+  cursor: pointer;
+  color: #64748b;
+  /* Lighter color when placeholder is shown */
+}
+
+.form-select:valid {
+  color: #334155;
+  /* Darker text once an option is selected */
+}
+
+.form-input::placeholder {
+  color: #94a3b8;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--primary-teal);
+  background-color: var(--white);
+  box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.1);
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Submit Button */
+.signup-footer {
+  margin-top: 10px;
+}
+
+.btn-submit {
+  width: 100%;
+  background-color: var(--primary-teal);
+  color: white;
+  border: none;
+  padding: 16px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.btn-submit:hover {
+  background-color: var(--primary-teal-hover);
+}
+
+.btn-submit:active {
+  transform: scale(0.98);
+}
+
+/* ── Sign In Link ─── */
+.auth-link {
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 4px 0 0 0;
+}
+
+.auth-link a {
+  color: var(--primary-teal);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.auth-link a:hover {
+  text-decoration: underline;
+}
