@@ -103,18 +103,6 @@ const PatientDashboard = () => {
                                 </div>
                             </div>
 
-                            {/* CNN Imaging — Coming Soon */}
-                            <div className="dash-card" style={{ opacity: 0.6 }}>
-                                <div className="dash-card-header">
-                                    <div className="dash-card-icon" style={{ background: '#f1f5f9', color: '#94a3b8' }}>
-                                        <Activity size={20} />
-                                    </div>
-                                    <div>
-                                        <div className="dash-card-title">Medical Image Scan</div>
-                                        <div className="dash-card-subtitle">CNN imaging analysis — coming soon</div>
-                                    </div>
-                                </div>
-                            </div>
 
                             <p className="dash-section-title">Recent Activity</p>
                             <div className="dash-card">
