@@ -1,0 +1,19 @@
+:root {
+    --primary-teal: #0d9488;
+    --bg-teal: #f0fdfa;
+    --text-dark: #134e4a;
+    --text-muted: #64748b;
+    --border-color: #cbd5e1;
+    --white: #ffffff;
+}
+
+.login-container {
+    height: 100vh;
+    overflow: hidden;
+    background-color: var(--bg-teal);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Inter', -apple-system, sans-serif;
+    padding: 20px;
+}

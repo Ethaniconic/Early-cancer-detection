@@ -1,9 +1,11 @@
 :root {
   --primary-teal: #0d9488;
+  --primary-teal-hover: #0f766e;
   --bg-teal: #f0fdfa;
-  --text-dark: #134e4a;
+  --text-dark: #115e59;
   --text-muted: #64748b;
-  --border-color: #cbd5e1;
+  --border-color: #e2e8f0;
+  --input-bg: #f8fafc;
   --white: #ffffff;
 }
 
@@ -13,23 +15,27 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   padding: 20px;
 }
 
 .signup-card {
   background: var(--white);
   width: 100%;
-  max-width: 480px;
+  max-width: 440px;
   border-radius: 24px;
   padding: 40px;
-  box-shadow: 0 10px 30px rgba(13, 148, 136, 0.08);
+  box-shadow: 0 10px 40px rgba(13, 148, 136, 0.08);
 }
 
-/* Progress Header */
+.signup-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
 .signup-title {
   color: var(--text-dark);
-  font-size: 24px;
+  font-size: 26px;
   margin: 0 0 8px 0;
   font-weight: 700;
 }
@@ -40,24 +46,48 @@
   margin: 0;
 }
 
-.progress-track {
-  width: 100%;
-  height: 6px;
-  background-color: #e2e8f0;
-  border-radius: 10px;
+/* Role Selector Buttons */
+.role-selector {
+  display: flex;
+  background: var(--input-bg);
+  padding: 6px;
+  border-radius: 12px;
   margin-top: 24px;
-  overflow: hidden;
+  border: 1px solid var(--border-color);
 }
 
-.progress-bar {
-  height: 100%;
-  background-color: var(--primary-teal);
+.role-btn {
+  flex: 1;
+  padding: 10px 4px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  transition: all 0.3s ease;
 }
 
-/* Form Styling */
-.form-wrapper {
-  margin-top: 32px;
-  min-height: 250px;
+.role-btn:hover {
+  color: var(--text-dark);
+}
+
+.role-btn.active {
+  background: var(--white);
+  color: var(--primary-teal);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* Form Styles */
+.signup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .input-group {
@@ -66,27 +96,41 @@
   gap: 16px;
 }
 
-.section-heading {
+.input-row {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--primary-teal);
-  margin-bottom: 8px;
+  gap: 16px;
 }
 
-.section-heading h3 {
-  margin: 0;
-  font-size: 18px;
-  color: var(--text-dark);
+.flex-1 { flex: 1; }
+.flex-2 { flex: 2; }
+
+.input-with-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.field-icon {
+  position: absolute;
+  left: 16px;
+  color: #94a3b8;
+  pointer-events: none; /* Prevents icon from blocking clicks */
 }
 
 .form-input {
-  padding: 14px 16px;
+  width: 100%;
+  padding: 14px 16px 14px 44px; /* Left padding makes room for the icon */
   border-radius: 12px;
   border: 1.5px solid var(--border-color);
+  background-color: var(--input-bg);
   font-size: 15px;
+  color: #334155;
   transition: all 0.2s ease;
-  background-color: #fafafa;
+  box-sizing: border-box;
+}
+
+.form-input::placeholder {
+  color: #94a3b8;
 }
 
 .form-input:focus {
@@ -96,63 +140,39 @@
   box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.1);
 }
 
-/* Checkbox Style */
-.checkbox-container {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  font-size: 14px;
-  color: var(--text-muted);
-  cursor: pointer;
-  line-height: 1.4;
-  margin-top: 8px;
+/* Chrome, Safari, Edge, Opera - Remove arrows from number input */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
-.checkbox-container input {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--primary-teal);
-  cursor: pointer;
-}
-
-/* Footer & Buttons */
+/* Submit Button */
 .signup-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 40px;
+  margin-top: 10px;
 }
 
-.btn-next {
+.btn-submit {
+  width: 100%;
   background-color: var(--primary-teal);
   color: white;
   border: none;
-  padding: 14px 28px;
-  border-radius: 14px;
+  padding: 16px;
+  border-radius: 12px;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  transition: transform 0.2s ease, background 0.2s ease;
+  transition: background-color 0.2s ease, transform 0.1s ease;
 }
 
-.btn-next:hover {
-  background-color: #0b7a6f;
-  transform: translateY(-1px);
+.btn-submit:hover {
+  background-color: var(--primary-teal-hover);
 }
 
-.btn-back {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.btn-back:hover {
-  color: var(--text-dark);
+.btn-submit:active {
+  transform: scale(0.98);
 }

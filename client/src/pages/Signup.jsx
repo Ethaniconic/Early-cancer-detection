@@ -1,120 +1,184 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronLeft, HeartPulse, User, ClipboardList } from 'lucide-react';
-import './Signup.css';
+import { User, ShieldCheck, Stethoscope, Lock, Phone, Calendar, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import './auth.css';
+
+
+const API_URL = 'http://localhost:3000/api';
 
 const Signup = () => {
-  const [step, setStep] = useState(1);
-  const totalSteps = 3;
+  const [role, setRole] = useState('user');
+  const [formData, setFormData] = useState({ name: '', age: '', mobile: '', password: '' });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  const nextStep = () => setStep((prev) => Math.min(prev + 1, totalSteps));
-  const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
-
-  const variants = {
-    enter: (direction) => ({ x: direction > 0 ? 30 : -30, opacity: 0 }),
-    center: { x: 0, opacity: 1 },
-    exit: (direction) => ({ x: direction < 0 ? 30 : -30, opacity: 0 })
+  const handleInputChange = (e) => {
+    setError('');
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleRoleChange = (newRole) => {
+    setRole(newRole);
+    setError('');
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const res = await fetch(`${API_URL}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...formData, age: Number(formData.age), role }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.message || 'Registration failed. Please try again.');
+      } else {
+        setSuccess(`Account created! Welcome, ${data.user.name}.`);
+        setFormData({ name: '', age: '', mobile: '', password: '' });
+      }
+    } catch (err) {
+      setError('Could not connect to server. Please check your connection.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const roles = [
+    { key: 'user', label: 'Patient', icon: <User size={16} /> },
+    { key: 'doctor', label: 'Doctor', icon: <Stethoscope size={16} /> },
+    { key: 'admin', label: 'Admin', icon: <ShieldCheck size={16} /> },
+  ];
+
   return (
-    <div className="signup-container">
-      <div className="signup-card">
-        {/* Progress Header */}
-        <div className="signup-header">
-          <h2 className="signup-title">Patient Onboarding</h2>
-          <p className="signup-subtitle">We’re here to support you every step of the way.</p>
-          <div className="progress-track">
-            <motion.div 
-              className="progress-bar" 
-              initial={{ width: 0 }}
-              animate={{ width: `${(step / totalSteps) * 100}%` }}
-              transition={{ duration: 0.5 }}
+    <div className="auth-container">
+      <motion.div
+        className="auth-card"
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+      >
+        {/* Header */}
+        <div className="auth-header">
+          <div className="auth-logo">
+            <span className="logo-icon">🩺</span>
+          </div>
+          <h1 className="auth-title">Create Account</h1>
+          <p className="auth-subtitle">Select your role and register below.</p>
+        </div>
+
+        {/* Role Selector */}
+        <div className="role-selector">
+          {roles.map(({ key, label, icon }) => (
+            <button
+              key={key}
+              type="button"
+              className={`role-btn ${role === key ? 'active' : ''}`}
+              onClick={() => handleRoleChange(key)}
+            >
+              {icon} {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="auth-form">
+          <AnimatePresence mode="wait">
+            {(error || success) && (
+              <motion.div
+                key={error ? 'error' : 'success'}
+                className={`alert-box ${error ? 'alert-error' : 'alert-success'}`}
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+              >
+                {error ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
+                <span>{error || success}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Full Name */}
+          <div className="input-with-icon">
+            <User className="field-icon" size={18} />
+            <input
+              type="text"
+              name="name"
+              placeholder="Full Name"
+              className="form-input"
+              value={formData.name}
+              onChange={handleInputChange}
+              required
             />
           </div>
-        </div>
 
-        {/* Step Content */}
-        <div className="form-wrapper">
-          <AnimatePresence mode="wait" custom={step}>
-            <motion.div
-              key={step}
-              custom={step}
-              variants={variants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.3, ease: "easeOut" }}
-            >
-              {step === 1 && <PersonalInfo />}
-              {step === 2 && <MedicalHistory />}
-              {step === 3 && <LifestyleConsent />}
-            </motion.div>
-          </AnimatePresence>
-        </div>
+          {/* Age + Mobile Row */}
+          <div className="input-row">
+            <div className="input-with-icon flex-1">
+              <Calendar className="field-icon" size={18} />
+              <input
+                type="number"
+                name="age"
+                placeholder="Age"
+                className="form-input"
+                value={formData.age}
+                onChange={handleInputChange}
+                min="1"
+                max="120"
+                required
+              />
+            </div>
+            <div className="input-with-icon flex-2">
+              <Phone className="field-icon" size={18} />
+              <input
+                type="tel"
+                name="mobile"
+                placeholder="Mobile Number"
+                className="form-input"
+                value={formData.mobile}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+          </div>
 
-        {/* Navigation Actions */}
-        <div className="signup-footer">
-          {step > 1 ? (
-            <button onClick={prevStep} className="btn-back">
-              <ChevronLeft size={18} /> Back
-            </button>
-          ) : <div />}
-          
-          <button onClick={nextStep} className="btn-next">
-            {step === totalSteps ? 'Complete Signup' : 'Next Step'} 
-            {step !== totalSteps && <ChevronRight size={18} />}
+          {/* Password */}
+          <div className="input-with-icon">
+            <Lock className="field-icon" size={18} />
+            <input
+              type="password"
+              name="password"
+              placeholder="Create Password"
+              className="form-input"
+              value={formData.password}
+              onChange={handleInputChange}
+              required
+            />
+          </div>
+
+          <button type="submit" className="btn-submit" disabled={loading}>
+            {loading ? (
+              <span className="btn-spinner" />
+            ) : (
+              <>Register as {roles.find(r => r.key === role)?.label} <ArrowRight size={18} /></>
+            )}
           </button>
-        </div>
-      </div>
+        </form>
+
+        <p className="auth-link">
+          Already have an account? <Link to="/login">Sign In</Link>
+        </p>
+      </motion.div>
     </div>
   );
 };
-
-const PersonalInfo = () => (
-  <div className="input-group">
-    <div className="section-heading"><User size={20} /> <h3>Personal Details</h3></div>
-    <input type="text" placeholder="Full Name" className="form-input" />
-    <input type="date" className="form-input" title="Date of Birth" />
-    <select className="form-input">
-      <option value="">Select Gender</option>
-      <option value="male">Male</option>
-      <option value="female">Female</option>
-      <option value="other">Non-binary / Other</option>
-    </select>
-  </div>
-);
-
-const MedicalHistory = () => (
-  <div className="input-group">
-    <div className="section-heading"><HeartPulse size={20} /> <h3>Medical Profile</h3></div>
-    <select className="form-input">
-      <option value="">Primary Diagnosis Site</option>
-      <option value="tongue">Tongue</option>
-      <option value="floor">Floor of Mouth</option>
-      <option value="gums">Gums/Palate</option>
-    </select>
-    <select className="form-input">
-      <option value="">Current Treatment Stage</option>
-      <option value="new">Newly Diagnosed</option>
-      <option value="active">Active Treatment</option>
-      <option value="remission">Remission/Surveillance</option>
-    </select>
-    <input type="text" placeholder="Treating Hospital/Clinic" className="form-input" />
-  </div>
-);
-
-const LifestyleConsent = () => (
-  <div className="input-group">
-    <div className="section-heading"><ClipboardList size={20} /> <h3>Final Steps</h3></div>
-    <label className="checkbox-container">
-      <input type="checkbox" />
-      <span>I agree to the HIPAA-compliant data privacy terms.</span>
-    </label>
-    <label className="checkbox-container">
-      <input type="checkbox" />
-      <span>I consent to share my history with my care team.</span>
-    </label>
-  </div>
-);
 
 export default Signup;
