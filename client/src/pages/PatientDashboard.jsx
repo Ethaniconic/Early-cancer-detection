@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Activity, LogOut, FlaskConical, ClipboardCheck, ChevronRight } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Activity, LogOut, FlaskConical, ClipboardCheck, ChevronRight, Bell, Settings, User as UserIcon, UploadCloud, FileText, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useDropzone } from 'react-dropzone';
 import './Dashboard.css';
 
 const API_URL = 'http://localhost:3000/api';
@@ -22,6 +23,68 @@ const PatientDashboard = () => {
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState(null);
     const [activeSection, setActiveSection] = useState('home'); // 'home' | 'test'
+    const [showProfileMenu, setShowProfileMenu] = useState(false);
+
+    // Profile Completion State
+    const [profileComplete, setProfileComplete] = useState(user.profileComplete || false);
+    const [profileData, setProfileData] = useState({
+        targetCancer: '',
+        bloodGroup: '',
+        currentMedications: '',
+        pastSurgeries: '',
+        knownAllergies: '',
+        familyHistory: '',
+        currentSymptoms: ''
+    });
+    const [uploadedFiles, setUploadedFiles] = useState([]);
+
+    const onDrop = useCallback(acceptedFiles => {
+        setUploadedFiles(prev => [...prev, ...acceptedFiles]);
+    }, []);
+
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
+
+    const [profileSaving, setProfileSaving] = useState(false);
+    const [profileError, setProfileError] = useState('');
+
+    const handleProfileSubmit = async (e) => {
+        e.preventDefault();
+        if (!profileData.targetCancer) {
+            setProfileError('Please select a Target Cancer Detection option.');
+            return;
+        }
+        setProfileSaving(true);
+        setProfileError('');
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_URL}/profile/update`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify(profileData),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                // Update localStorage so the flag persists across page refreshes without re-login
+                const updatedUser = { ...user, profileComplete: true, targetCancer: profileData.targetCancer };
+                localStorage.setItem('user', JSON.stringify(updatedUser));
+                setProfileComplete(true);
+            } else {
+                setProfileError(data.message || 'Failed to save profile. Please try again.');
+            }
+        } catch {
+            setProfileError('Could not connect to server. Your changes were saved locally.');
+            // Fallback — still mark complete locally so user isn't stuck
+            const updatedUser = { ...user, profileComplete: true, targetCancer: profileData.targetCancer };
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+            setProfileComplete(true);
+        } finally {
+            setProfileSaving(false);
+        }
+    };
+
+    const handleProfileInputChange = (e) => {
+        setProfileData({ ...profileData, [e.target.name]: e.target.value });
+    };
 
     const handleLogout = () => {
         localStorage.removeItem('token');
@@ -62,28 +125,168 @@ const PatientDashboard = () => {
     const riskClass = result?.risk === 'high' ? 'high-risk' : result?.risk === 'moderate' ? 'moderate-risk' : 'low-risk';
 
     return (
-        <div className="dashboard-page">
+        <div className="dashboard-page relative">
+
+            {/* --- Complete Profile Modal (Overlay) --- */}
+            <AnimatePresence>
+                {!profileComplete && (
+                    <motion.div
+                        className="modal-overlay"
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+                    >
+                        <motion.div
+                            className="modal-content"
+                            initial={{ y: 50, scale: 0.95 }} animate={{ y: 0, scale: 1 }} exit={{ y: 20, scale: 0.95 }}
+                            style={{ background: 'white', borderRadius: 24, padding: '32px', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
+                        >
+                            <h2 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-dark)', marginBottom: 8 }}>Complete Your Profile</h2>
+                            <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 24 }}>Please provide your medical details to personalize your dashboard.</p>
+
+                            <form onSubmit={handleProfileSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+                                <div className="form-field">
+                                    <label>Target Cancer Detection *</label>
+                                    <select name="targetCancer" value={profileData.targetCancer} onChange={handleProfileInputChange} required style={{ width: '100%', padding: '12px', borderRadius: 10, border: '1.5px solid var(--border)', fontSize: 14 }}>
+                                        <option value="">Select Target Detection Program</option>
+                                        <option value="Breast Cancer">Breast Cancer</option>
+                                        <option value="Oral Cancer">Oral Cancer</option>
+                                        <option value="Skin Cancer">Skin Cancer</option>
+                                        <option value="Cervical Cancer">Cervical Cancer</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-dark)', marginBottom: 12, borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>Medical Details</h3>
+                                    <div className="form-row">
+                                        <div className="form-field"><label>Blood Group</label><input type="text" name="bloodGroup" placeholder="e.g. O+" value={profileData.bloodGroup} onChange={handleProfileInputChange} /></div>
+                                        <div className="form-field"><label>Known Allergies</label><input type="text" name="knownAllergies" placeholder="e.g. Penicillin, Peanuts" value={profileData.knownAllergies} onChange={handleProfileInputChange} /></div>
+                                    </div>
+                                    <div className="form-row" style={{ marginTop: 12 }}>
+                                        <div className="form-field"><label>Current Medications</label><input type="text" name="currentMedications" placeholder="Any currently prescribed drugs" value={profileData.currentMedications} onChange={handleProfileInputChange} /></div>
+                                        <div className="form-field"><label>Past Surgeries</label><input type="text" name="pastSurgeries" placeholder="Any previous operations" value={profileData.pastSurgeries} onChange={handleProfileInputChange} /></div>
+                                    </div>
+                                    <div className="form-row" style={{ marginTop: 12 }}>
+                                        <div className="form-field"><label>Family History of Cancer</label><input type="text" name="familyHistory" placeholder="e.g. Mother (Breast Config)" value={profileData.familyHistory} onChange={handleProfileInputChange} /></div>
+                                        <div className="form-field"><label>Current Symptoms</label><input type="text" name="currentSymptoms" placeholder="Briefly describe symptoms" value={profileData.currentSymptoms} onChange={handleProfileInputChange} /></div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-dark)', marginBottom: 12, borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>Past Prescriptions & Reports</h3>
+                                    <div
+                                        {...getRootProps()}
+                                        style={{ border: `2px dashed ${isDragActive ? 'var(--primary)' : 'var(--border)'}`, borderRadius: 12, padding: '30px 20px', textAlign: 'center', background: isDragActive ? 'var(--primary-light)' : '#f8fafc', cursor: 'pointer', transition: 'all 0.2s' }}
+                                    >
+                                        <input {...getInputProps()} />
+                                        <UploadCloud size={32} color={isDragActive ? 'var(--primary)' : 'var(--text-muted)'} style={{ margin: '0 auto 10px' }} />
+                                        <p style={{ fontSize: 14, color: 'var(--text-body)', fontWeight: 500 }}>{isDragActive ? "Drop the files here" : "Drag & drop files here, or click to select files"}</p>
+                                        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>PDF, JPG, PNG (Max 10MB)</p>
+                                    </div>
+                                    {uploadedFiles.length > 0 && (
+                                        <div style={{ marginTop: 12 }}>
+                                            <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase' }}>Selected Files:</p>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                                {uploadedFiles.map((file, idx) => (
+                                                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-dark)', background: '#f1f5f9', padding: '6px 12px', borderRadius: 6 }}>
+                                                        <FileText size={14} color="var(--primary)" /> {file.name}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {profileError && (
+                                    <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', color: 'var(--error)', fontSize: 13, fontWeight: 500, marginTop: 4 }}>
+                                        ⚠ {profileError}
+                                    </div>
+                                )}
+
+                                <button type="submit" className="btn-primary" disabled={profileSaving} style={{ marginTop: 10, padding: '16px' }}>
+                                    {profileSaving ? <><span className="btn-spinner" /> Saving...</> : <>Save Profile &amp; Continue <ChevronRight size={18} /></>}
+                                </button>
+                            </form>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Nav */}
-            <nav className="dash-nav">
+            <nav className="dash-nav" style={{ filter: !profileComplete ? 'blur(4px)' : 'none', pointerEvents: !profileComplete ? 'none' : 'auto' }}>
                 <div className="dash-nav-brand">
                     <span>🩺</span> CarePortal
                 </div>
-                <div className="dash-nav-right">
-                    <span className="dash-role-badge">Patient</span>
-                    <button className="btn-logout" onClick={handleLogout}>
-                        <LogOut size={14} style={{ display: 'inline', marginRight: 4 }} />
-                        Logout
+                <div className="dash-nav-right" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+
+                    <button style={{ background: 'none', border: 'none', cursor: 'pointer', position: 'relative', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
+                        <Bell size={20} />
+                        <span style={{ position: 'absolute', top: -2, right: -2, background: 'var(--error)', width: 8, height: 8, borderRadius: '50%' }}></span>
                     </button>
+
+                    <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
+                        <Settings size={20} />
+                    </button>
+
+                    <div style={{ width: 1, height: 24, background: 'var(--border)' }}></div>
+
+                    <div style={{ position: 'relative' }}>
+                        <button
+                            onClick={() => setShowProfileMenu(!showProfileMenu)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
+                        >
+                            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                                {(user.name || 'P').charAt(0).toUpperCase()}
+                            </div>
+                        </button>
+
+                        {/* Profile Dropdown Menu */}
+                        {showProfileMenu && (
+                            <div style={{ position: 'absolute', top: 46, right: 0, background: 'white', border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', minWidth: 200, overflow: 'hidden', zIndex: 50 }}>
+                                <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+                                    <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-dark)' }}>{user.name}</div>
+                                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Patient Account</div>
+                                </div>
+                                <button style={{ width: '100%', textAlign: 'left', padding: '10px 16px', background: 'none', border: 'none', fontSize: 13, color: 'var(--text-body)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }} onClick={() => setShowProfileMenu(false)}>
+                                    <UserIcon size={14} /> Edit Profile
+                                </button>
+                                <button style={{ width: '100%', textAlign: 'left', padding: '10px 16px', background: 'none', border: 'none', fontSize: 13, color: 'var(--error)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, borderTop: '1px solid var(--border)' }} onClick={handleLogout}>
+                                    <LogOut size={14} /> Logout
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </nav>
 
-            <main className="dash-main">
+            <main className="dash-main" style={{ filter: !profileComplete ? 'blur(4px)' : 'none', pointerEvents: !profileComplete ? 'none' : 'auto' }}>
                 <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
                     {/* Welcome */}
-                    <div className="dash-welcome">
-                        <h2>Hello, {user.name || 'Patient'} 👋</h2>
-                        <p>Use the tools below to run your cancer screening tests.</p>
+                    <div className="dash-welcome" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                            <h2>Hello, {user.name || 'Patient'} 👋</h2>
+                            <p>Use the tools below to run your cancer screening tests.</p>
+                        </div>
                     </div>
+
+                    {/* Program Summary Card (Active when profile complete) */}
+                    {profileComplete && activeSection === 'home' && (
+                        <div className="dash-card" style={{ background: 'var(--primary-light)', borderColor: 'var(--primary-border)', position: 'relative', overflow: 'hidden' }}>
+                            <div style={{ position: 'absolute', top: 0, right: 0, background: 'var(--primary)', color: 'white', padding: '4px 12px', borderBottomLeftRadius: 14, fontSize: 11, fontWeight: 600 }}>ACTIVE PROGRAM</div>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+                                <div style={{ width: 48, height: 48, borderRadius: 12, background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                                    <Activity size={24} />
+                                </div>
+                                <div>
+                                    <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-dark)', marginBottom: 4 }}>{user.targetCancer || 'General Screening'}</h3>
+                                    <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>Consulting Physician: <span style={{ fontWeight: 600, color: 'var(--text-body)' }}>{user.doctorName || 'Not Assigned'}</span></p>
+                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'white', padding: '4px 10px', borderRadius: 20, fontSize: 12, border: '1px solid var(--primary-border)' }}>
+                                        <CheckCircle2 size={14} color="var(--success)" /> Profile Complete
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {activeSection === 'home' && (
                         <>

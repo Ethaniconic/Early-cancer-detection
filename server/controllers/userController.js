@@ -98,12 +98,44 @@ const loginUser = async (req, res) => {
 
             res.json({
                 message: 'Login successful',
-                user: { _id: user._id, name: user.name, role: user.role },
+                user: {
+                    _id: user._id,
+                    name: user.name,
+                    role: user.role,
+                    profileComplete: user.profileComplete || false,
+                    targetCancer: user.targetCancer || ''
+                },
                 token
             });
         } else {
             res.status(401).json({ message: invalidMsg });
         }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+const updateProfile = async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ message: 'Not authorized.' });
+        }
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
+
+        const { targetCancer, bloodGroup, currentMedications, pastSurgeries, knownAllergies, familyHistory, currentSymptoms } = req.body;
+
+        const updatedUser = await User.findByIdAndUpdate(
+            decoded.id,
+            { $set: { targetCancer, bloodGroup, currentMedications, pastSurgeries, knownAllergies, familyHistory, currentSymptoms, profileComplete: true } },
+            { new: true, select: '-password' }
+        );
+
+        if (!updatedUser) return res.status(404).json({ message: 'User not found.' });
+
+        res.json({ message: 'Profile updated successfully.', user: updatedUser });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server Error' });
@@ -120,4 +152,4 @@ const getRecentUsers = async (req, res) => {
     }
 };
 
-module.exports = { registerUser, loginUser, getRecentUsers };
+module.exports = { registerUser, loginUser, getRecentUsers, updateProfile };
