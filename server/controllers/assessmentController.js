@@ -88,3 +88,19 @@ exports.getPatientAssessments = async (req, res, next) => {
         next(err);
     }
 };
+
+// @desc    Delete an assessment
+// @route   DELETE /api/assessments/:id
+// @access  Private
+exports.deleteAssessment = async (req, res, next) => {
+    try {
+        const assessment = await Assessment.findById(req.params.id);
+        if (!assessment) {
+            return res.status(404).json({ success: false, error: 'Assessment not found' });
+        }
+        await assessment.deleteOne();
+        res.status(200).json({ success: true, data: {} });
+    } catch (err) {
+        next(err);
+    }
+};

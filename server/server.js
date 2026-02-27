@@ -13,6 +13,7 @@ const patientRoutes = require('./routes/patients');
 const assessmentRoutes = require('./routes/assessments');
 const metricsRoutes = require('./routes/metrics');
 const validationRoutes = require('./routes/validation');
+const appointmentRoutes = require('./routes/appointmentRoutes');
 
 // Utilities/Config
 const { connectDB } = require('./config/db');
@@ -44,6 +45,7 @@ app.use('/api/patients', patientRoutes);
 app.use('/api/assessments', assessmentRoutes);
 app.use('/api/model-metrics', metricsRoutes);
 app.use('/api/validation-framework', validationRoutes);
+app.use('/api/appointments', appointmentRoutes);
 
 // Global Error Handler
 app.use(errorHandler);

@@ -44,11 +44,7 @@ function App() {
         <Route path="/dashboard/patient" element={<ProtectedRoute expectedRole="user"><PatientDashboard /></ProtectedRoute>} />
 
         {/* Clinician Portal (Doctor) */}
-        <Route path="/dashboard/doctor" element={<ProtectedRoute expectedRole="doctor"><Layout /></ProtectedRoute>}>
-          <Route index element={<PatientCheckupForm />} />
-          <Route path="workflow" element={<Workflow />} />
-          <Route path="model-report" element={<ModelReport />} />
-        </Route>
+        <Route path="/dashboard/doctor" element={<ProtectedRoute expectedRole="doctor"><DoctorDashboard /></ProtectedRoute>} />
 
         <Route path="/dashboard/admin" element={<ProtectedRoute expectedRole="admin"><AdminDashboard /></ProtectedRoute>} />
 

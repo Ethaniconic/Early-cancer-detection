@@ -16,10 +16,13 @@ import json
 
 warnings.filterwarnings('ignore')
 
-RAW_DIR = "data/raw"
-PROCESSED_DIR = "data/processed"
-MODEL_DIR = "model"
-REPORTS_DIR = "reports"
+# Always resolve paths relative to this script, not the working directory
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+RAW_DIR      = os.path.join(_SCRIPT_DIR, "data", "raw")
+PROCESSED_DIR= os.path.join(_SCRIPT_DIR, "data", "processed")
+MODEL_DIR    = os.path.join(_SCRIPT_DIR, "model")
+REPORTS_DIR  = os.path.join(_SCRIPT_DIR, "reports")
 
 for d in [RAW_DIR, PROCESSED_DIR, MODEL_DIR, REPORTS_DIR]:
     os.makedirs(d, exist_ok=True)
@@ -39,6 +42,8 @@ def verify_datasets():
     
     if len(missing) > 0:
         print("ERROR: MISSING DATASETS")
+        for f, url in missing:
+            print(f"  - {f}  (source: {url})")
         sys.exit(1)
         
 verify_datasets()
@@ -59,30 +64,133 @@ for f in EXPECTED_FILES.keys():
         # Standardize column names
         df.columns = [col.lower().strip().replace(' ', '_').replace('-', '_').replace('(', '').replace(')', '').replace(':', '_') for col in df.columns]
         
-        # Explicit mapping mapping for this hackathon
-        cancer_pos_terms = ['yes', 'high', 'positive', '1', 'aml', 'all', 'cll', 'cml', 'lymphoma', 'multiple myeloma', 'nsclc', 'sclc']
+        # Mapping for alignment of biomarkers
+        mapping = {
+            'total_wbc_count/cumm': 'wbc_count',
+            'platelet_count_/cumm': 'platelet_count',
+            'gender': 'sex',
+            'smoking': 'smoking_status',
+            'occupational_hazards': 'occupational_exposure',
+            'obesity': 'bmi'
+        }
+        df.rename(columns=mapping, inplace=True)
         
-        target_candidates = ['cancer_risk', 'risk_factor', 'biopsy', 'lung_cancer', 'cancer_type', 'dx_cancer', 'level']
+        # Explicit mapping mapping for this hackathon
+        cancer_pos_terms = ['yes', 'high', 'positive', '1', 'confirmed', 'aml', 'all', 'cll', 'cml', 'lymphoma', 'multiple myeloma', 'nsclc', 'sclc']
+        
+        target_candidates = ['cancer_risk', 'risk_factor', 'biopsy', 'lung_cancer', 'cancer_type', 'dx_cancer', 'level', 'diagnosis_result', 'final_prediction']
         target_col = None
         for col in df.columns:
-            if any(tc in col for tc in target_candidates):
+            if any(tc == col for tc in target_candidates) or any(tc in col for tc in target_candidates):
                 target_col = col
                 break
         
         if target_col:
             df.rename(columns={target_col: 'cancer_risk'}, inplace=True)
+            # Ensure it's a Series even if multiple columns matched (unlikely but safe)
+            if isinstance(df['cancer_risk'], pd.DataFrame):
+                df['cancer_risk'] = df['cancer_risk'].iloc[:, 0]
+
             if df['cancer_risk'].dtype == 'O':
                 df['cancer_risk'] = df['cancer_risk'].map(lambda x: 1 if str(x).lower().strip() in cancer_pos_terms else 0)
         else:
-            df['cancer_risk'] = 0 
-            
-        # Downsample lung cancer risk which has 460k positive rows to 1000 to cleanly balance classes in merger
-        if 'lung_cancer_risk' in f and len(df) > 5000:
-            df = df.sample(n=1000, random_state=42)
-            
+            df['cancer_risk'] = 0 # If no target column found, assume no cancer risk for this dataset
+            pass  # target col found and renamed above
+
+        # Cap positives per dataset at 500 to avoid dominance
+        if 'cancer_risk' in df.columns:
+            pos = df[df['cancer_risk'] == 1]
+            neg = df[df['cancer_risk'] == 0]
+            if len(pos) > 500:
+                pos = pos.sample(n=500, random_state=42)
+            if len(neg) > 500:
+                neg = neg.sample(n=500, random_state=42)
+            df = pd.concat([pos, neg], ignore_index=True)
+
         dfs.append(df)
     except Exception as e:
         print(f"Failed to process {f}: {e}")
+
+# --- Inject Synthetic Healthy Population ---
+# All datasets above contain ONLY cancer patients.
+# We MUST add realistic healthy samples or the model has no idea what "healthy" looks like.
+print("--- Injecting Synthetic Healthy Samples ---")
+np.random.seed(42)
+N_HEALTHY = 700
+
+def rand(low, high, n=N_HEALTHY): return np.random.uniform(low, high, n)
+def choose(opts, n=N_HEALTHY): return np.random.choice(opts, n)
+
+healthy_df = pd.DataFrame({
+    'age':                  rand(18, 65),
+    'sex':                  choose(['Male', 'Female']),
+    'bmi':                  rand(18.5, 27.5),
+    'smoking_status':       choose(['Non-Smoker', 'Former Smoker']),
+    'pack_years':           np.where(choose(['Non-Smoker', 'Former Smoker']) == 'Non-Smoker', 0.0, rand(1, 10)),
+    'alcohol_use':          rand(0, 3),
+    'family_history_cancer': choose([0, 0, 0, 1]),  # 75% no family history
+    'occupational_exposure': choose([0, 0, 0, 1]),
+    'prior_cancer_diagnosis': np.zeros(N_HEALTHY),
+    # Normal CBC values (per WHO / reference lab standards)
+    'wbc_count':            rand(4.5, 11.0),       # 10^3/uL
+    'rbc_count':            rand(4.0, 5.5),         # 10^6/uL
+    'hemoglobin':           rand(12.5, 17.0),       # g/dL
+    'hematocrit':           rand(37.0, 52.0),       # %
+    'platelet_count':       rand(150, 400),         # 10^3/uL
+    'neutrophil_pct':       rand(45, 70),           # %
+    'lymphocyte_pct':       rand(20, 45),           # %
+    'mcv':                  rand(80, 100),          # fL
+    'mch':                  rand(27, 33),           # pg
+    # Normal tumor markers (very low in healthy individuals)
+    'cea_level':            rand(0.1, 2.5),         # ng/mL (normal < 3.0)
+    'ca125_level':          rand(5, 25),            # U/mL (normal < 35)
+    'crp_level':            rand(0.1, 3.0),         # mg/L (normal < 5)
+    'cancer_risk':          np.zeros(N_HEALTHY)     # Label: healthy = 0
+})
+
+dfs.append(healthy_df)
+print(f"  + Added {N_HEALTHY} synthetic healthy samples")
+
+# ── Borderline / Moderate-Risk Samples ────────────────────────────────────────
+# Gap between our perfectly-healthy synthetic data and the severe cancer-patient
+# data was too large; the MLP collapses intermediate inputs to one extreme.
+# We bridge that gap with 400 "grey-zone" patients: real risk factors, but
+# biomarkers only mildly out of range.
+N_BORDER = 400
+
+def randb(low, high): return np.random.uniform(low, high, N_BORDER)
+def chooseb(opts): return np.random.choice(opts, N_BORDER)
+
+border_df = pd.DataFrame({
+    'age':                  randb(45, 75),
+    'sex':                  chooseb(['Male', 'Female']),
+    'bmi':                  randb(25, 32),            # overweight
+    'smoking_status':       chooseb(['Smoker', 'Former Smoker']),
+    'pack_years':           randb(5, 25),
+    'alcohol_use':          randb(2, 6),
+    'family_history_cancer': chooseb([0, 0, 1]),       # 33% family history
+    'occupational_exposure': chooseb([0, 1]),
+    'prior_cancer_diagnosis': np.zeros(N_BORDER),
+    # Mildly abnormal CBC
+    'wbc_count':            randb(11.0, 15.0),         # leukocytosis onset
+    'rbc_count':            randb(3.5, 4.5),
+    'hemoglobin':           randb(10.5, 13.0),         # mild anaemia
+    'hematocrit':           randb(32, 40),
+    'platelet_count':       randb(350, 500),           # approaching high-normal
+    'neutrophil_pct':       randb(65, 80),             # mildly elevated
+    'lymphocyte_pct':       randb(15, 25),             # mildly low
+    'mcv':                  randb(75, 85),             # mildly low (microcytic)
+    'mch':                  randb(24, 28),
+    # Mildly elevated tumour markers
+    'cea_level':            randb(2.5, 7.0),           # borderline elevated
+    'ca125_level':          randb(25, 60),             # borderline elevated
+    'crp_level':            randb(5.0, 15.0),          # moderate inflammation
+    # Label these as a 50/50 mix to teach the model intermediate risk
+    'cancer_risk':          np.random.randint(0, 2, N_BORDER)
+})
+
+dfs.append(border_df)
+print(f"  + Added {N_BORDER} synthetic moderate-risk samples")
 
 merged_df = pd.concat(dfs, ignore_index=True)
 
@@ -91,8 +199,10 @@ for col in plco_schema:
     if col not in merged_df.columns:
         merged_df[col] = np.nan
 
-# Force 'age' to be numerical
-merged_df['age'] = pd.to_numeric(merged_df['age'], errors='coerce')
+# Force 'age' and schema columns to be numerical
+for col in plco_schema:
+    if col in merged_df.columns and col != 'smoking_status' and col != 'sex':
+        merged_df[col] = pd.to_numeric(merged_df[col], errors='coerce')
 
 # Handle columns safely 
 missing_ratios = merged_df.isnull().sum() / len(merged_df)
@@ -170,9 +280,10 @@ joblib.dump(scaler, os.path.join(MODEL_DIR, "scaler.pkl"))
 with open(os.path.join(MODEL_DIR, "feature_columns.json"), "w") as f:
     json.dump(list(X_train.columns), f)
 
-print("--- Applying SMOTE ---")
-smote = SMOTE(sampling_strategy=1.0, random_state=42)
-X_train_res, y_train_res = smote.fit_resample(X_train_scaled, y_train)
+print(f"--- Class distribution: {dict(y_train.value_counts().items())} ---")
+X_train_res = X_train_scaled
+y_train_res = y_train
+
 
 # USE DEEP NEURAL NETWORK (MLP Classifier) instead of XGBoost
 print("\n--- Training Deep Neural Network (MLP) ---")
@@ -203,7 +314,7 @@ best_params = study.best_params
 print(f"Best params: {best_params}")
 
 print("\n--- Training Final Multi-Layer Perceptron (Neural Network) ---")
-final_model = MLPClassifier(**best_params, early_stopping=True, random_state=42, max_iter=200)
+final_model = MLPClassifier(**best_params, early_stopping=True, random_state=42, max_iter=300)
 final_model.fit(X_train_res, y_train_res)
 
 THRESHOLD = 0.30

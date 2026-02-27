@@ -1,51 +1,263 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LogOut, Users, FlaskConical, Activity, AlertCircle, FileText, UploadCloud, ChevronRight, X, Send, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import {
+    LogOut, Calendar, Users, Activity, AlertTriangle, CheckCircle, Clock,
+    ChevronDown, ChevronUp, ShieldCheck, Stethoscope, Phone, Droplet, Pill,
+    FileText, UploadCloud, Info, TrendingUp, FlaskConical, Search, PlusCircle
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
-import './Dashboard.css';
+import PatientCheckupForm from '../components/dashboard/PatientCheckupForm';
+import './DoctorDashboard.css';
 
 const API_URL = 'http://localhost:3000/api';
 
-// Demo assigned patients specific to this doctor
-const DEMO_ASSIGNED_PATIENTS = [
-    { id: 1, name: 'Ankita Sharma', age: 34, targetCancer: 'Breast Cancer', risk: 'high', tested: '2h ago', mobile: '+91 9876543210', bloodGroup: 'O+', history: 'Mother (Breast Cancer)' },
-    { id: 2, name: 'Rohan Gupta', age: 45, targetCancer: 'Oral Cancer', risk: 'moderate', tested: '1d ago', mobile: '+91 9876543211', bloodGroup: 'B+', history: 'None' },
-];
+// ── Verification Modal ──
+const VerificationModal = ({ onVerify }) => {
+    const [specialization, setSpecialization] = useState('');
+    const [degree, setDegree] = useState(null);
+    const [cert, setCert] = useState(null);
+    const [idDoc, setIdDoc] = useState(null);
 
-const DocumentUploadDropzone = ({ label, dropzone, file }) => (
-    <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-dark)', marginBottom: 6 }}>{label}</div>
-        <div
-            {...dropzone.getRootProps()}
-            style={{ border: `1.5px dashed ${dropzone.isDragActive ? 'var(--primary)' : 'var(--border)'}`, borderRadius: 10, padding: '16px', textAlign: 'center', background: dropzone.isDragActive ? 'var(--primary-light)' : '#f8fafc', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
-        >
-            <input {...dropzone.getInputProps()} />
-            {!file ? (
-                <>
-                    <UploadCloud size={24} color={dropzone.isDragActive ? 'var(--primary)' : 'var(--text-muted)'} style={{ marginBottom: 8 }} />
-                    <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Click or drag file</span>
-                </>
-            ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--primary)', fontWeight: 500, fontSize: 13 }}>
-                    <FileText size={16} /> {file.name}
+    const dz1 = useDropzone({ onDrop: useCallback(f => setDegree(f[0]), []), maxFiles: 1 });
+    const dz2 = useDropzone({ onDrop: useCallback(f => setCert(f[0]), []), maxFiles: 1 });
+    const dz3 = useDropzone({ onDrop: useCallback(f => setIdDoc(f[0]), []), maxFiles: 1 });
+
+    const canSubmit = specialization && degree && cert && idDoc;
+
+    return (
+        <div className="doc-verify-overlay">
+            <motion.div
+                className="doc-verify-modal"
+                initial={{ y: 40, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                    <ShieldCheck size={28} color="#3b82f6" />
+                    <h2>Medical Verification</h2>
                 </div>
-            )}
+                <p className="doc-verify-desc">
+                    To access the clinical dashboard, please provide your medical credentials for verification.
+                    This is a one-time process for all oncology specialists.
+                </p>
+
+                <div className="doc-form-group">
+                    <label className="doc-form-label">Specialization</label>
+                    <input
+                        className="doc-form-input"
+                        placeholder="e.g. Surgical Oncologist"
+                        value={specialization}
+                        onChange={e => setSpecialization(e.target.value)}
+                    />
+                </div>
+
+                {[
+                    { label: 'Medical Degree', dz: dz1, file: degree },
+                    { label: 'Council Registration', dz: dz2, file: cert },
+                    { label: 'Identity Proof', dz: dz3, file: idDoc },
+                ].map(({ label, dz, file }) => (
+                    <div key={label} className="doc-form-group">
+                        <label className="doc-form-label">{label}</label>
+                        <div {...dz.getRootProps()} className="doc-verify-dropzone">
+                            <input {...dz.getInputProps()} />
+                            {file ? (
+                                <div style={{ color: '#10b981', fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                                    <CheckCircle size={14} /> {file.name}
+                                </div>
+                            ) : (
+                                <div style={{ color: '#64748b' }}>
+                                    <UploadCloud size={20} style={{ marginBottom: 4 }} />
+                                    <p style={{ fontSize: 12, margin: 0 }}>Click or drag to upload</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ))}
+
+                <button
+                    disabled={!canSubmit}
+                    onClick={() => onVerify(specialization)}
+                    className="doc-verify-btn"
+                >
+                    Complete Activation
+                </button>
+            </motion.div>
         </div>
-    </div>
-);
+    );
+};
 
+// ── Appointment Card ──
+const AppointmentCard = ({ appt, index, updateStatus }) => {
+    const [expanded, setExpanded] = useState(false);
+    const patient = appt.patientId || {};
+    const riskKey = (appt.risk_level || 'low').toLowerCase();
+    const statusKey = appt.status || 'pending';
+    const initial = (patient.name || '?')[0].toUpperCase();
+    const top3 = (appt.top_factors || []).slice(0, 3);
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05 }}
+            className={`doc-appointment-card ${expanded ? 'expanded' : ''}`}
+            onClick={() => setExpanded(!expanded)}
+        >
+            <div className="doc-appt-header">
+                <div className="doc-patient-avatar">{initial}</div>
+                <div className="doc-patient-info">
+                    <div className="doc-patient-name">{patient.name || 'Patient Record'}</div>
+                    <div className="doc-patient-meta">
+                        <span>Age {patient.age || '—'}</span>
+                        <span><Phone size={12} /> {patient.mobile || '—'}</span>
+                        <span className={`doc-status-badge ${statusKey}`}>{statusKey}</span>
+                    </div>
+                </div>
+                <div className="doc-appt-right">
+                    <div className={`doc-risk-badge ${riskKey}`}>{riskKey} Risk</div>
+                    <div className="doc-appt-time">
+                        <Calendar size={12} /> {appt.date} • <Clock size={12} /> {appt.time}
+                    </div>
+                </div>
+                <div style={{ color: '#64748b' }}>
+                    {expanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                </div>
+            </div>
+
+            <AnimatePresence>
+                {expanded && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="doc-appt-detail"
+                    >
+                        <div className="doc-detail-grid">
+                            {[
+                                { label: 'Blood Group', val: patient.bloodGroup },
+                                { label: 'Medications', val: patient.currentMedications },
+                                { label: 'Allergies', val: patient.knownAllergies },
+                                { label: 'Past Surgeries', val: patient.pastSurgeries },
+                                { label: 'Family History', val: patient.familyHistory },
+                                { label: 'Symptoms', val: patient.currentSymptoms },
+                            ].map((d, i) => (
+                                <div key={i} className="doc-detail-item">
+                                    <div className="doc-detail-label">{d.label}</div>
+                                    <div className="doc-detail-value">{d.val || '—'}</div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="doc-risk-bar-wrapper">
+                            <div className="doc-risk-bar-label">
+                                <span><TrendingUp size={12} style={{ marginRight: 6 }} /> AI Risk Assessment</span>
+                                <span style={{ color: riskKey === 'high' ? '#f87171' : riskKey === 'medium' ? '#fbbf24' : '#34d399' }}>
+                                    {appt.risk_score ? `${appt.risk_score}%` : 'N/A'}
+                                </span>
+                            </div>
+                            <div className="doc-risk-bar-track">
+                                <motion.div
+                                    className={`doc-risk-bar-fill ${riskKey}`}
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${appt.risk_score || 0}%` }}
+                                    transition={{ duration: 1 }}
+                                />
+                            </div>
+                        </div>
+
+                        {top3.length > 0 && (
+                            <div className="doc-factors-strip">
+                                <span style={{ fontSize: 11, color: '#64748b', alignSelf: 'center' }}>Top Factors:</span>
+                                {top3.map((f, i) => (
+                                    <div key={i} className={`doc-factor-chip ${f.type === 'positive' ? 'up' : 'down'}`}>
+                                        {f.type === 'positive' ? '↑' : '↓'} {f.label}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="doc-action-row">
+                            <button className="doc-btn doc-btn-success" onClick={(e) => { e.stopPropagation(); updateStatus(appt._id, 'confirmed'); }}>
+                                <CheckCircle size={14} /> Confirm
+                            </button>
+                            <button className="doc-btn doc-btn-primary" onClick={(e) => { e.stopPropagation(); updateStatus(appt._id, 'completed'); }}>
+                                <Stethoscope size={14} /> Mark Completed
+                            </button>
+                            <button className="doc-btn doc-btn-danger" onClick={(e) => { e.stopPropagation(); updateStatus(appt._id, 'cancelled'); }}>
+                                <AlertTriangle size={14} /> Cancel
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </motion.div>
+    );
+};
+
+// ── Main Dashboard ──
 const DoctorDashboard = () => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const [patients] = useState(DEMO_ASSIGNED_PATIENTS);
+    const navigate = useNavigate();
+    const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
+    const [isVerified, setIsVerified] = useState(user.isVerified || false);
+    const [appointments, setAppointments] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState('all');
 
-    // Profile Completion State
-    const [profileComplete, setProfileComplete] = useState(user.profileComplete || false);
-    const [profileData, setProfileData] = useState({ specialization: '' });
-    const [uploadedDocs, setUploadedDocs] = useState({ degree: null, certificate: null, id: null });
+    useEffect(() => {
+        if (!user._id) { setLoading(false); return; }
+        const token = localStorage.getItem('token');
+        fetch(`${API_URL}/appointments/doctor/${user._id}`, {
+            headers: { Authorization: `Bearer ${token}` }
+        })
+            .then(r => r.json())
+            .then(d => { if (d.success) setAppointments(d.data); })
+            .catch(console.error)
+            .finally(() => setLoading(false));
+    }, [user._id]);
 
-    // UI State
-    const [selectedPatient, setSelectedPatient] = useState(null);
+    const updateStatus = async (id, status) => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_URL}/appointments/${id}/status`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ status })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setAppointments(prev => prev.map(a => a._id === id ? { ...a, status } : a));
+            }
+        } catch (err) {
+            console.error('Failed to update status:', err);
+        }
+    };
+
+    const handleVerify = async (spec) => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_URL}/verify-doctor`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ specialization: spec })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                const updatedUser = { ...user, isVerified: true, specialization: spec };
+                localStorage.setItem('user', JSON.stringify(updatedUser));
+                setUser(updatedUser);
+                setIsVerified(true);
+            }
+        } catch (err) {
+            console.error('Verification failed:', err);
+        }
+    };
 
     const handleLogout = () => {
         localStorage.removeItem('token');
@@ -53,227 +265,145 @@ const DoctorDashboard = () => {
         navigate('/login');
     };
 
-    // --- File Upload Logic ---
-    const onDropDegree = useCallback(acceptedFiles => setUploadedDocs(prev => ({ ...prev, degree: acceptedFiles[0] })), []);
-    const onDropCert = useCallback(acceptedFiles => setUploadedDocs(prev => ({ ...prev, certificate: acceptedFiles[0] })), []);
-    const onDropId = useCallback(acceptedFiles => setUploadedDocs(prev => ({ ...prev, id: acceptedFiles[0] })), []);
+    const total = appointments.length;
+    const pending = appointments.filter(a => (a.status || 'pending') === 'pending').length;
+    const highRisk = appointments.filter(a => (a.risk_level || '').toLowerCase() === 'high').length;
 
-    const dropzoneDegree = useDropzone({ onDrop: onDropDegree, maxFiles: 1 });
-    const dropzoneCert = useDropzone({ onDrop: onDropCert, maxFiles: 1 });
-    const dropzoneId = useDropzone({ onDrop: onDropId, maxFiles: 1 });
+    const filtered = activeTab === 'all'
+        ? appointments
+        : activeTab === 'screening'
+            ? []
+            : appointments.filter(a => (a.status || 'pending') === activeTab);
 
-    const handleProfileSubmit = (e) => {
-        e.preventDefault();
-        const updatedUser = { ...user, profileComplete: true, specialization: profileData.specialization };
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-        setProfileComplete(true);
-    };
-
-    // --- Render Helpers ---
-    const riskBadge = (risk) => {
-        const map = { high: 'badge-high', moderate: 'badge-moderate', low: 'badge-low' };
-        const labels = { high: '⚠ High Risk', moderate: '🔶 Moderate Risk', low: '✅ Low Risk' };
-        return <span className={`list-badge ${map[risk]}`}>{labels[risk]}</span>;
-    };
+    const initials = (user.name || 'DR').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
     return (
-        <div className="dashboard-page relative" style={{ background: '#f8fafc' }}>
-
-            {/* --- Doctor Verification Modal --- */}
+        <div className="doctor-dashboard">
             <AnimatePresence>
-                {!profileComplete && (
-                    <motion.div
-                        className="modal-overlay"
-                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
-                    >
-                        <motion.div
-                            className="modal-content"
-                            initial={{ y: 50, scale: 0.95 }} animate={{ y: 0, scale: 1 }} exit={{ y: 20, scale: 0.95 }}
-                            style={{ background: 'white', borderRadius: 24, padding: '32px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
-                        >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                                <ShieldCheck size={28} color="var(--primary)" />
-                                <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-dark)' }}>Verify Professional Profile</h2>
-                            </div>
-                            <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 24 }}>Upload your credentials to activate your oncologist dashboard.</p>
-
-                            <form onSubmit={handleProfileSubmit} style={{ display: 'flex', flexDirection: 'column' }}>
-
-                                <div className="form-field" style={{ marginBottom: 20 }}>
-                                    <label>Specialization *</label>
-                                    <select required value={profileData.specialization} onChange={(e) => setProfileData({ specialization: e.target.value })} style={{ width: '100%', padding: '12px', borderRadius: 10, border: '1.5px solid var(--border)', fontSize: 14 }}>
-                                        <option value="">Select Primary Specialization</option>
-                                        <option value="Breast Cancer Specialist">Breast Cancer Specialist</option>
-                                        <option value="Oral Cancer Specialist">Oral Cancer Specialist</option>
-                                        <option value="Cervical Cancer Specialist">Cervical Cancer Specialist</option>
-                                        <option value="Skin Cancer Specialist">Skin Cancer Specialist</option>
-                                    </select>
-                                </div>
-
-                                <DocumentUploadDropzone label="1. Medical Degree (MBBS/MD)" dropzone={dropzoneDegree} file={uploadedDocs.degree} />
-                                <DocumentUploadDropzone label="2. Specialty Certificate (Oncology)" dropzone={dropzoneCert} file={uploadedDocs.certificate} />
-                                <DocumentUploadDropzone label="3. Government/Medical License ID" dropzone={dropzoneId} file={uploadedDocs.id} />
-
-                                <button type="submit" className="btn-primary" style={{ marginTop: 12, padding: '16px' }} disabled={!uploadedDocs.degree || !uploadedDocs.certificate || !uploadedDocs.id || !profileData.specialization}>
-                                    Submit for Verification <ChevronRight size={18} />
-                                </button>
-                                <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 12 }}>Verification usually takes 1-2 business days.</p>
-                            </form>
-                        </motion.div>
-                    </motion.div>
-                )}
+                {!isVerified && <VerificationModal onVerify={handleVerify} />}
             </AnimatePresence>
 
-            {/* --- Patient Detail Modal --- */}
-            <AnimatePresence>
-                {selectedPatient && (
-                    <motion.div
-                        className="modal-overlay"
-                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        onClick={() => setSelectedPatient(null)}
-                        style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(2px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
-                    >
-                        <motion.div
-                            className="modal-content"
-                            initial={{ y: 50, scale: 0.95 }} animate={{ y: 0, scale: 1 }} exit={{ y: 20, scale: 0.95 }}
-                            onClick={e => e.stopPropagation()}
-                            style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 24, padding: '32px', width: '100%', maxWidth: '600px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
+            {/* Sidebar */}
+            <aside className="doc-sidebar">
+                <div className="doc-sidebar-header">
+                    <div className="doc-sidebar-logo">
+                        <div className="doc-sidebar-logo-icon">
+                            <Activity size={20} color="white" />
+                        </div>
+                        <span className="doc-sidebar-logo-text">CarePortal</span>
+                    </div>
+
+                    <div className="doc-avatar-block">
+                        <div className="doc-avatar-circle">{initials}</div>
+                        <div>
+                            <div className="doc-avatar-name">Dr. {user.name}</div>
+                            <div className="doc-avatar-role">{user.specialization || 'Oncologist'}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <nav className="doc-sidebar-nav">
+                    {[
+                        { id: 'all', icon: <Calendar size={18} />, label: 'Appointments' },
+                        { id: 'pending', icon: <Clock size={18} />, label: 'Pending Cases', count: pending },
+                        { id: 'screening', icon: <FlaskConical size={18} />, label: 'Screening Lab' },
+                    ].map(item => (
+                        <div
+                            key={item.id}
+                            className={`doc-nav-item ${activeTab === item.id ? 'active' : ''}`}
+                            onClick={() => setActiveTab(item.id)}
                         >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                                    <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700 }}>
-                                        {selectedPatient.name.charAt(0)}
-                                    </div>
-                                    <div>
-                                        <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-dark)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                                            {selectedPatient.name}
-                                            {riskBadge(selectedPatient.risk)}
-                                        </div>
-                                        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>Age: {selectedPatient.age} | Blood: {selectedPatient.bloodGroup} | Ph: {selectedPatient.mobile}</div>
-                                    </div>
-                                </div>
-                                <button onClick={() => setSelectedPatient(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={20} /></button>
-                            </div>
+                            {item.icon}
+                            <span style={{ flex: 1 }}>{item.label}</span>
+                            {item.count > 0 && (
+                                <span style={{ background: '#ef4444', color: 'white', fontSize: 10, padding: '2px 6px', borderRadius: 10 }}>
+                                    {item.count}
+                                </span>
+                            )}
+                        </div>
+                    ))}
+                </nav>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
-                                <div style={{ background: '#f8fafc', padding: 16, borderRadius: 12, border: '1px solid var(--border)' }}>
-                                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Target Screening</div>
-                                    <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-dark)' }}>{selectedPatient.targetCancer}</div>
-                                </div>
-                                <div style={{ background: '#f8fafc', padding: 16, borderRadius: 12, border: '1px solid var(--border)' }}>
-                                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Family History</div>
-                                    <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-dark)' }}>{selectedPatient.history}</div>
-                                </div>
-                            </div>
-
-                            <div style={{ marginBottom: 24 }}>
-                                <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-dark)', marginBottom: 12 }}>Uploaded Medical Documents</h3>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'white', border: '1px solid var(--border)', borderRadius: 10 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, fontWeight: 500, color: 'var(--text-body)' }}>
-                                            <FileText size={18} color="var(--primary)" /> latest_blood_report.pdf
-                                        </div>
-                                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Uploaded yesterday</span>
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'white', border: '1px solid var(--border)', borderRadius: 10 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, fontWeight: 500, color: 'var(--text-body)' }}>
-                                            <FileText size={18} color="var(--primary)" /> past_prescription.jpg
-                                        </div>
-                                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Uploaded 2 days ago</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div>
-                                <button style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '14px', borderRadius: 12, border: '1px solid var(--primary)', background: 'white', color: 'var(--primary)', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', fontSize: 14 }} className="hover-bg-primary-light">
-                                    <Send size={16} /> Send Update / Notification to Patient
-                                </button>
-                            </div>
-
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            <nav className="dash-nav" style={{ filter: !profileComplete ? 'blur(4px)' : 'none', pointerEvents: !profileComplete ? 'none' : 'auto' }}>
-                <div className="dash-nav-brand"><span>🩺</span> CarePortal</div>
-                <div className="dash-nav-right">
-                    <span className="dash-role-badge">Doctor</span>
-                    <button className="btn-logout" onClick={handleLogout}>
-                        <LogOut size={14} style={{ display: 'inline', marginRight: 4 }} /> Logout
+                <div className="doc-sidebar-footer">
+                    <button className="doc-logout-btn" onClick={handleLogout}>
+                        <LogOut size={16} /> Sign Out
                     </button>
                 </div>
-            </div>
+            </aside>
 
-            <main className="dash-main" style={{ maxWidth: '800px', filter: !profileComplete ? 'blur(4px)' : 'none', pointerEvents: !profileComplete ? 'none' : 'auto' }}>
-                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-                        <div>
-                            <h2 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-dark)', marginBottom: 4 }}>Dr. {user.name || 'Doctor'}</h2>
-                            <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>{user.specialization || 'Oncologist'} · License: {user.licenseNumber || 'Verified'}</p>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'white', padding: '6px 14px', borderRadius: 20, fontSize: 13, border: '1px solid var(--border)', fontWeight: 600, color: 'var(--success)' }}>
-                            <ShieldCheck size={16} /> Verified Profile
-                        </div>
+            {/* Main Content */}
+            <main className="doc-main">
+                <header className="doc-topbar">
+                    <div>
+                        <h1 className="doc-topbar-title">
+                            {activeTab === 'all' ? 'Dashboard Overview' :
+                                activeTab === 'pending' ? 'Critical Pending Review' :
+                                    activeTab === 'screening' ? 'Screening Lab' : 'Patient Queue'}
+                        </h1>
+                        <p className="doc-topbar-subtitle">
+                            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                        </p>
                     </div>
+                    <div className="doc-topbar-badge">On Duty</div>
+                </header>
 
-                    <div style={{ background: 'var(--primary-light)', padding: '16px', borderRadius: 12, border: '1px solid var(--primary-border)', marginBottom: 24, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                        <AlertCircle size={20} color="var(--primary)" style={{ flexShrink: 0, mt: 2 }} />
-                        <div>
-                            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--primary)', marginBottom: 2 }}>Patient-Wise View</div>
-                            <div style={{ fontSize: 13, color: 'var(--text-dark)' }}>This list strictly shows patients who have explicitly chosen you as their consulting specialist.</div>
+                {activeTab !== 'screening' && (
+                    <>
+                        <div className="doc-stats-grid">
+                            <div className="doc-stat-card blue">
+                                <div className="doc-stat-icon blue"><Users size={22} /></div>
+                                <div className="doc-stat-value">{total}</div>
+                                <div className="doc-stat-label">Total Patients</div>
+                            </div>
+                            <div className="doc-stat-card teal">
+                                <div className="doc-stat-icon teal"><Clock size={22} /></div>
+                                <div className="doc-stat-value">{pending}</div>
+                                <div className="doc-stat-label">Awaiting Review</div>
+                            </div>
+                            <div className="doc-stat-card amber">
+                                <div className="doc-stat-icon amber"><AlertTriangle size={22} /></div>
+                                <div className="doc-stat-value">{highRisk}</div>
+                                <div className="doc-stat-label">High Risk Cases</div>
+                            </div>
                         </div>
-                    </div>
-                </form>
-            )}
 
-                    <p className="dash-section-title">My Assigned Patients ({patients.length})</p>
-
-                    {/* Patient Grid View */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-                        {patients.map(p => (
-                            <motion.div
-                                key={p.id}
-                                whileHover={{ y: -2 }}
-                                onClick={() => setSelectedPatient(p)}
-                                style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 16, padding: '20px', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', position: 'relative', overflow: 'hidden' }}
-                            >
-                                {/* Top Color Bar based on risk */}
-                                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: p.risk === 'high' ? 'var(--error)' : p.risk === 'moderate' ? 'var(--warning)' : 'var(--success)' }} />
-
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                                    <div>
-                                        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-dark)', marginBottom: 2 }}>{p.name}</div>
-                                        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Age {p.age} · {p.targetCancer}</div>
-                                    </div>
-                                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#f8fafc', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, border: '1px solid var(--border)' }}>
-                                        {p.name.charAt(0)}
-                                    </div>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-                                    {riskBadge(p.risk)}
-                                    <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                        <FlaskConical size={12} /> Tested {p.tested}
-                                    </div>
-                                </div>
-                            </motion.div>
-                        ))}
-                    </div>
-
-                    {patients.length === 0 && (
-                        <div style={{ textAlign: 'center', padding: '40px', background: 'white', borderRadius: 16, border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
-                            No patients assigned to you yet.
+                        <div className="doc-section-title">
+                            <div className="doc-section-title-icon"><Activity size={18} /></div>
+                            Patient Queue
                         </div>
-                    )}
 
-                </motion.div>
+                        {loading ? (
+                            <div className="doc-spinner" />
+                        ) : filtered.length === 0 ? (
+                            <div className="doc-empty-state">
+                                <div className="doc-empty-icon"><Calendar size={32} color="#64748b" /></div>
+                                <div className="doc-empty-title">No Appointments Found</div>
+                                <div className="doc-empty-sub">There are no patient records matching the selected filter.</div>
+                            </div>
+                        ) : (
+                            <div className="doc-appointment-list">
+                                {filtered.map((appt, idx) => (
+                                    <AppointmentCard
+                                        key={appt._id}
+                                        appt={appt}
+                                        index={idx}
+                                        updateStatus={updateStatus}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </>
+                )}
+
+                {activeTab === 'screening' && (
+                    <motion.div
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                    >
+                        <PatientCheckupForm />
+                    </motion.div>
+                )}
             </main>
-
-            <style>{`
-                .hover-bg-primary-light:hover { background: var(--primary-light) !important; }
-            `}</style>
         </div>
     );
 };

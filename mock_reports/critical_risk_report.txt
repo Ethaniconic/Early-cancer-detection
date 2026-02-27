@@ -1,0 +1,27 @@
+Patient Name: Robert Miller
+Date of Birth: 05/22/1958
+Age: 67
+Sex: Male
+Smoking Status: Chronic Smoker (40 Pack Years)
+
+LABORATORY RESULTS - ONCOLOGY SCREENING PANEL [CRITICAL FINDINGS]
+
+--- COMPLETE BLOOD COUNT (CBC) ---
+White Blood Cell Count (WBC): 15.8 x10^3/uL [HIGH]
+Red Blood Cell Count (RBC): 3.2 x10^6/uL [LOW]
+Hemoglobin: 9.4 g/dL [CRITICAL LOW - ANEMIA]
+Hematocrit: 28.2 % [LOW]
+Platelet Count: 580 x10^3/uL [CRITICAL HIGH - THROMBOCYTOSIS]
+Mean Corpuscular Volume (MCV): 76.5 fL [LOW]
+Mean Corpuscular Hemoglobin (MCH): 24.2 pg [LOW]
+Neutrophils %: 86.2 % [HIGH]
+Lymphocytes %: 7.4 % [LOW]
+
+--- INFLAMMATORY MARKERS ---
+C-Reactive Protein (CRP): 42.5 mg/L [CRITICAL HIGH]
+
+--- TUMOR MARKERS ---
+Carcinoembryonic Antigen (CEA): 24.8 ng/mL [CRITICAL HIGH]
+Cancer Antigen 125 (CA-125): 92.5 U/mL [CRITICAL HIGH]
+
+[END OF REPORT - URGENT CLINICAL CORRELATION REQUIRED].

@@ -1,0 +1,27 @@
+Patient Name: John Doe
+Date of Birth: 01/15/1975
+Age: 51
+Sex: Male
+Smoking Status: Former Smoker
+
+LABORATORY RESULTS - ONCOLOGY SCREENING PANEL
+
+--- COMPLETE BLOOD COUNT (CBC) ---
+White Blood Cell Count (WBC): 12.5 x10^3/uL
+Red Blood Cell Count (RBC): 4.8 x10^6/uL
+Hemoglobin: 14.2 g/dL
+Hematocrit: 42.1 %
+Platelet Count: 250 x10^3/uL
+Mean Corpuscular Volume (MCV): 88.0 fL
+Mean Corpuscular Hemoglobin (MCH): 29.5 pg
+Neutrophils %: 65.0 %
+Lymphocytes %: 25.0 %
+
+--- INFLAMMATORY MARKERS ---
+C-Reactive Protein (CRP): 5.1 mg/L
+
+--- TUMOR MARKERS ---
+Carcinoembryonic Antigen (CEA): 3.5 ng/mL
+Cancer Antigen 125 (CA-125): 18.2 U/mL
+
+[END OF REPORT]
