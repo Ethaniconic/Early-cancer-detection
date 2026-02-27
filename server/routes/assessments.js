@@ -2,7 +2,8 @@ const express = require('express');
 const {
     createAssessment,
     getAssessmentById,
-    getPatientAssessments
+    getPatientAssessments,
+    deleteAssessment
 } = require('../controllers/assessmentController');
 const upload = require('../middleware/upload');
 
@@ -14,7 +15,8 @@ router
 
 router
     .route('/:id')
-    .get(getAssessmentById);
+    .get(getAssessmentById)
+    .delete(deleteAssessment);
 
 router
     .route('/patient/:patientId')

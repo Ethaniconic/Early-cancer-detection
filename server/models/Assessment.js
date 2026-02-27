@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const assessmentSchema = new mongoose.Schema({
     patientId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Patient',
+        ref: 'User',
         required: true
     },
     imagePath: {
@@ -27,7 +27,7 @@ const assessmentSchema = new mongoose.Schema({
     },
     riskLevel: {
         type: String,
-        enum: ['Low', 'Moderate', 'High']
+        enum: ['Low', 'Medium', 'High']
     },
     heatmapPath: {
         type: String
@@ -39,6 +39,10 @@ const assessmentSchema = new mongoose.Schema({
     historyContributions: {
         type: Array,
         default: []
+    },
+    aiInsight: {
+        type: String,
+        default: null
     }
 }, {
     timestamps: true
