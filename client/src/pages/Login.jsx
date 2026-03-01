@@ -4,7 +4,7 @@ import { User, Stethoscope, ShieldCheck, Phone, IdCard, Lock, ArrowRight, AlertC
 import { Link, useNavigate } from 'react-router-dom';
 import './Login.css';
 
-const API_URL = 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_NODE_API_URL;
 
 // Config for each role
 const ROLE_CONFIG = {

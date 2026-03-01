@@ -10,7 +10,7 @@ import { useDropzone } from 'react-dropzone';
 import PatientCheckupForm from '../components/dashboard/PatientCheckupForm';
 import './DoctorDashboard.css';
 
-const API_URL = 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_NODE_API_URL;
 
 // ── Verification Modal ──
 const VerificationModal = ({ onVerify }) => {

@@ -4,7 +4,7 @@ import { Activity, LogOut, ChevronRight, ChevronLeft, Droplets, HeartPulse, User
 import { useNavigate } from 'react-router-dom';
 import './Dashboard.css';
 
-const API_URL = 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_NODE_API_URL;
 
 const QUESTIONNAIRE_STEPS = [
     {

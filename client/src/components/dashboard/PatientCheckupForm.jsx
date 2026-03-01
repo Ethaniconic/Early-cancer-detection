@@ -142,7 +142,7 @@ const PatientCheckupForm = () => {
             const user = JSON.parse(localStorage.getItem('user') || '{}');
             payload.patientId = user._id;
 
-            const response = await fetch('http://localhost:3000/api/predict/biomarkers', {
+            const response = await fetch(`${import.meta.env.VITE_NODE_API_URL}/predict/biomarkers`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

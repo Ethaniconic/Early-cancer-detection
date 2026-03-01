@@ -39,7 +39,7 @@ const AdminDashboard = () => {
         const fetchUsers = async () => {
             try {
                 // In a real app, you'd fetch all users for the admin table
-                const response = await fetch('http://localhost:3000/api/users/recent');
+                const response = await fetch(`${import.meta.env.VITE_NODE_API_URL}/users/recent`);
                 const data = await response.json();
 
                 // Add mock status and lastLogin for the table if missing

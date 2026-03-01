@@ -7,7 +7,7 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import './Signup.css';
 
-const API_URL = 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_NODE_API_URL;
 
 const Signup = () => {
   const navigate = useNavigate();

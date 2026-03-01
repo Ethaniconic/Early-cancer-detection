@@ -1,7 +1,7 @@
 // Centralized API calls using native fetch
 
-const Node_API_URL = 'http://localhost:3000/api';
-const Flask_ML_URL = 'http://localhost:5000';
+const Node_API_URL = import.meta.env.VITE_NODE_API_URL;
+const Flask_ML_URL = import.meta.env.VITE_FLASK_ML_URL;
 
 const getAuthHeaders = () => {
     const token = localStorage.getItem('token');

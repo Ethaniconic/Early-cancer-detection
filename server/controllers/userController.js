@@ -92,7 +92,7 @@ const loginUser = async (req, res) => {
         if (user && (await bcrypt.compare(password, user.password))) {
             const token = jwt.sign(
                 { id: user._id, role: user.role },
-                process.env.JWT_SECRET || 'fallback_secret',
+                process.env.JWT_SECRET,
                 { expiresIn: '30d' }
             );
 
@@ -125,7 +125,7 @@ const updateProfile = async (req, res) => {
             return res.status(401).json({ message: 'Not authorized.' });
         }
         const token = authHeader.split(' ')[1];
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
         const { targetCancer, bloodGroup, currentMedications, pastSurgeries, knownAllergies, familyHistory, currentSymptoms } = req.body;
 

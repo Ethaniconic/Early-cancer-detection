@@ -12,7 +12,7 @@ const ModelReport = () => {
         const fetchMetrics = async () => {
             try {
                 // Fetch from Flask ML API
-                const res = await fetch('http://localhost:5000/model_metrics');
+                const res = await fetch(`${import.meta.env.VITE_FLASK_ML_URL}/model_metrics`);
                 if (!res.ok) throw new Error("Failed to load metrics from ML API");
                 const data = await res.json();
                 if (data.success) {
